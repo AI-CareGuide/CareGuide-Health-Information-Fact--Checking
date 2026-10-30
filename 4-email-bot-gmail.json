@@ -1,0 +1,267 @@
+{
+  "name": "CareGuide – Email Knowledge Bot (Gmail + Gemini)",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ],
+          "q": "category:primary -from:(noreply OR no-reply OR donotreply OR do-not-reply OR mailer-daemon OR notifications)",
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "id": "1debf954-ccb0-41b9-a7bc-c5df6ad293c4",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3a9c8934-978e-43ca-ab3d-c2073bd9ed2f",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "Question",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "b7e1c2d4-1f3a-4c5e-9a8b-2d6f0e1a7c33",
+              "leftValue": "={{ $json.from.value[0].address }}",
+              "rightValue": "no-reply",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "id": "fa6e78d2-e59f-4672-ac31-705895028a29",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "text/plain"
+            }
+          }
+        }
+      },
+      "id": "098d459b-c84d-4801-9657-861da8777171",
+      "name": "Download Knowledge Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        464,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "3fe60e1b-9a6b-4971-8435-399b3535c9e8",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        704,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Gmail Trigger').item.json.text }}",
+        "options": {
+          "systemMessage": "=You answer customer emails. Use ONLY the information between the KNOWLEDGE tags. If the answer is not there, say you don't have that information and that the team will follow up. Do not guess. Write a short, polite, professional email reply in the same language as the question. Start with a greeting and end with a thank-you. Do not include a subject line.\n\n<KNOWLEDGE>\n{{ $('Extract from File').first().json.data }}\n</KNOWLEDGE>"
+        }
+      },
+      "id": "7b10eb06-48aa-4e5d-9740-8d78e290009b",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        944,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "01109d8c-b93b-4e20-87f3-f12d89c9197a",
+      "name": "Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        944,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "id": "45a24002-bcaa-4eb0-b70b-d76d9d35fdcb",
+      "name": "Send Email Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1232,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## CareGuide – Email Knowledge Bot (Gmail + Gemini)\nReads new unread emails in the primary inbox whose subject contains \"Question\", downloads the knowledge Google Doc as plain text, and replies in the same thread using only that text.\n\n**Setup:** connect Gmail and Google Drive (OAuth) and add a Gemini API key. Select your knowledge Google Doc in 'Download Knowledge Doc'. The trigger polls hourly by default; set it to every minute for demos.\n\nEducational use only.",
+        "height": 300,
+        "width": 520,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -380
+      ],
+      "id": "50ae893b-ae38-462f-af11-d5ce47017f7e",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Download Knowledge Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Knowledge Doc": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Reply": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": [],
+  "pinData": {}
+}

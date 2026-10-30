@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CareGuide – إجابات صحية موثقة بالعربية</title>
+<style>
+:root{--ink:#143640;--paper:#F3F6F4;--line:#D5E0DD;--muted:#5B6F75;--rose:#B83A62;--rose-bg:#FBEAF0;--teal:#0F6B67;--teal-bg:#E4F2F0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Geeza Pro","Segoe UI",Tahoma,"Noto Naskh Arabic",sans-serif;font-size:16px;line-height:1.8}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px 24px}
+header{padding:28px 0 18px}
+h1{margin:0;font-size:30px}
+header p{margin:4px 0 0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px}
+.ic{width:46px;height:46px;border-radius:50%;background:var(--teal-bg);color:var(--teal);display:grid;place-items:center}
+.ic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card h2{margin:8px 0 0;font-size:18px}
+.card p{margin:0;color:var(--muted);font-size:15px;flex:1}
+.act{align-self:flex-start;margin-top:10px;font:inherit;font-weight:700;color:var(--teal);background:#fff;border:1px solid var(--teal);border-radius:10px;padding:7px 16px;text-decoration:none;cursor:pointer}
+.act.main{background:var(--teal);color:#fff}
+.off{opacity:.5;pointer-events:none}
+#chat{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 16px 10px}
+#log{height:420px;overflow:auto;display:flex;flex-direction:column;padding:10px 0}
+#empty p{margin:0 0 10px;color:var(--muted)}
+.chips{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.chips button{font:inherit;text-align:start;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:8px 14px;cursor:pointer}
+.m{max-width:94%;margin:7px 0;padding:11px 14px;border-radius:14px;line-height:1.9}
+.u{align-self:flex-start;background:var(--ink);color:#fff;border-start-start-radius:4px}
+.b{align-self:flex-end;background:var(--paper);border:1px solid var(--line);border-start-end-radius:4px}
+.b p{margin:0}
+.myth,.fact{border-radius:10px;padding:8px 12px;margin:0 0 8px!important}
+.myth{background:var(--rose-bg)}.myth b{color:var(--rose)}
+.fact{background:var(--teal-bg)}.fact b{color:var(--teal)}
+.src{font-size:13px;color:var(--muted);margin-top:6px!important}
+.err{border-color:var(--rose);color:var(--rose)}
+.wait i{display:inline-block;width:7px;height:7px;margin:0 2px;border-radius:50%;background:var(--muted);animation:d 1s infinite}
+.wait i:nth-child(2){animation-delay:.15s}.wait i:nth-child(3){animation-delay:.3s}
+@keyframes d{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.wait i{animation:none}}
+form{display:flex;gap:8px;padding-top:6px}
+textarea{flex:1;font:inherit;resize:none;border:1px solid var(--line);border-radius:12px;padding:10px;color:var(--ink)}
+form button{font:inherit;font-weight:700;background:var(--teal);color:#fff;border:0;border-radius:12px;padding:0 22px;cursor:pointer}
+form button:disabled{opacity:.5}
+textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+footer{margin-top:16px;color:var(--muted);font-size:13px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>CareGuide</h1>
+    <p>معلومات صحية بالعربية من مصادر موثقة. اختر الطريقة المناسبة لك.</p>
+  </header>
+  <section class="grid" id="cards" aria-label="طرق الاستخدام"></section>
+  <section id="chat" hidden aria-label="المحادثة">
+    <div id="log" aria-live="polite">
+      <div id="empty">
+        <p>اكتب سؤالك عن معلومة صحية سمعتها، وسنوضح ما يقوله الدليل ومن أين جاء.</p>
+        <div class="chips">
+          <button type="button">هل ضغط الثدي أثناء الماموجرام ممكن ينشر الورم لو كان موجودًا؟</button>
+          <button type="button">هل الماموجرام مؤلم؟</button>
+          <button type="button">هل السونار يغني عن الماموجرام؟</button>
+        </div>
+      </div>
+    </div>
+    <form id="f">
+      <textarea id="q" rows="2" placeholder="اكتب سؤالك هنا" aria-label="سؤالك"></textarea>
+      <button id="go" type="submit">إرسال</button>
+    </form>
+  </section>
+  <footer>معلومات تثقيفية فقط: لا تشخيص ولا تغيير للعلاج. عند ظهور أعراض خطرة توجّه فورًا إلى الطوارئ.</footer>
+</div>
+<script>
+// ===== إعدادات الفريق: املأ الروابط ثم احفظ الملف =====
+const CONFIG = {
+  chatWebhook:  'http://localhost:5678/webhook/careguide', // الـ workflow رقم 1 (الوكيل الذكي + Chroma + FDA)
+  telegramUrl:  'https://t.me/pinkpathBreastcancer_bot',  // رابط البوت، مثال: https://t.me/CareGuideBot
+  emailAddress: 'nagibnoha2@gmail.com',  // بريد Gmail الذي يراقبه الـ workflow
+  formUrl:      'https://propose-preheated-diploma.ngrok-free.dev/form/e19b507e-eb54-4629-b47c-84f49b5ba3c7'   // رابط نموذج المترجم الطبي (Form Trigger – Production URL)
+};
+
+const svg = p => '<svg viewBox="0 0 24 24" aria-hidden="true">' + p + '</svg>';
+const ICONS = {
+  chat: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+  tg:   svg('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'),
+  mail: svg('<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'),
+  edu:  svg('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>')
+};
+const CARDS = [
+  { ic: 'chat', t: 'المساعد الذكي', d: 'اكتب سؤالك واحصل على إجابة موثقة مع ذكر المصدر.', a: 'ابدأ المحادثة', chat: true },
+  { ic: 'tg',   t: 'بوت تيليجرام', d: 'اسأل من هاتفك في أي وقت.', a: 'افتح البوت', href: CONFIG.telegramUrl, ext: true },
+  { ic: 'mail', t: 'البريد الإلكتروني', d: 'أرسل سؤالك ويصلك الرد على بريدك. يجب أن يحتوي عنوان الرسالة على كلمة Question.' + (CONFIG.emailAddress ? ' ' + CONFIG.emailAddress : ''), a: 'أرسل رسالة',
+    href: CONFIG.emailAddress ? 'mailto:' + CONFIG.emailAddress + '?subject=' + encodeURIComponent('Question: ') : '' },
+  { ic: 'edu',  t: 'المترجم الطبي', d: 'أدخل نصًا طبيًا أو ارفع تقريرًا بصيغة PDF لتحصل على ترجمة عربية واضحة ودقيقة.', a: 'افتح النموذج', href: CONFIG.formUrl, ext: true }
+];
+
+const $ = s => document.querySelector(s);
+const log = $('#log'), box = $('#q'), go = $('#go');
+const sid = 'web-' + Math.random().toString(36).slice(2);
+
+CARDS.forEach(c => {
+  const el = document.createElement('article');
+  el.className = 'card';
+  el.innerHTML = '<span class="ic">' + ICONS[c.ic] + '</span><h2></h2><p></p>';
+  el.querySelector('h2').textContent = c.t;
+  el.querySelector('p').textContent = c.d;
+  let a;
+  if (c.chat) {
+    a = document.createElement('button');
+    a.className = 'act main';
+    a.onclick = () => { $('#chat').hidden = false; $('#chat').scrollIntoView({ behavior: 'smooth' }); box.focus(); };
+  } else {
+    a = document.createElement('a');
+    a.className = 'act' + (c.href ? '' : ' off');
+    if (c.href) { a.href = c.href; if (c.ext) { a.target = '_blank'; a.rel = 'noopener'; } }
+  }
+  a.textContent = c.chat || c.href ? c.a : 'غير متاح بعد';
+  el.appendChild(a);
+  $('#cards').appendChild(el);
+});
+
+function add(cls) {
+  const d = document.createElement('div');
+  d.className = 'm ' + cls;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+  return d;
+}
+
+function render(text, el) {
+  el.textContent = '';
+  text.split('\n').map(x => x.trim()).filter(Boolean).forEach(row => {
+    const k = row.startsWith('🔸') ? 'myth' : row.startsWith('✅') ? 'fact' : row.startsWith('📌') ? 'src' : 'p';
+    const body = row.replace(/^(🔸|✅|📌)\s*/, '');
+    const p = document.createElement('p');
+    p.className = k;
+    const i = body.indexOf(':');
+    if (k !== 'p' && i > -1) {
+      const b = document.createElement('b');
+      b.textContent = body.slice(0, i + 1);
+      p.append(b, ' ', body.slice(i + 1).trim());
+    } else {
+      p.textContent = body;
+    }
+    el.appendChild(p);
+  });
+}
+
+async function ask(text) {
+  const e = $('#empty'); if (e) e.remove();
+  add('u').textContent = text;
+  const b = add('b wait');
+  b.innerHTML = '<i></i><i></i><i></i>';
+  go.disabled = true;
+  try {
+    const r = await fetch(CONFIG.chatWebhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatInput: text, sessionId: sid })
+    });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    b.className = 'm b';
+    render(String(j.output || '').trim() || 'لم أصل إلى إجابة. جرّب إعادة صياغة السؤال.', b);
+  } catch (err) {
+    b.className = 'm b err';
+    b.textContent = 'تعذّر الوصول إلى الخدمة. تأكد أن n8n يعمل وأن الـ workflow منشور.';
+  }
+  go.disabled = false;
+  log.scrollTop = log.scrollHeight;
+}
+
+$('#f').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const t = box.value.trim();
+  if (!t || go.disabled) return;
+  box.value = '';
+  ask(t);
+});
+box.addEventListener('keydown', ev => {
+  if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); $('#f').requestSubmit(); }
+});
+document.querySelectorAll('.chips button').forEach(b => b.addEventListener('click', () => ask(b.textContent)));
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+{
+  "name": "CareGuide – Knowledge Base Ingestion",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d4feff86-906d-413f-9cbc-13fdd49df171",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "052b80ef-c682-4da4-ae76-926b6bf335a1",
+      "name": "Download file"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "chromaCollection": {
+          "__rl": true,
+          "value": "careguide_v5",
+          "mode": "id"
+        },
+        "embeddingBatchSize": 50,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreChromaDB",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "id": "dcc7d909-bcc2-4e2b-9c0a-b4c9eb9933ce",
+      "name": "Chroma Vector Store"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "loader": "textLoader",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        736,
+        256
+      ],
+      "id": "37a5d05e-1434-4b82-b6d6-5d701e3b50f1",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "separator": "=====",
+        "chunkSize": 100
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        288
+      ],
+      "id": "075d1837-175b-44bb-86c6-2daae251d2b2",
+      "name": "Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        256,
+        304
+      ],
+      "id": "41cdc226-8bc0-47b7-adca-7bc2872d2d95",
+      "name": "Embeddings Ollama"
+    },
+    {
+      "parameters": {
+        "content": "## CareGuide – Knowledge Base Ingestion\nRun manually. Downloads the knowledge file (knowledge/careguide_knowledge_v3.txt, uploaded to Google Drive), splits it on the ===== lines so each Q&A block is one chunk, embeds it with Ollama (nomic-embed-text) and stores it in the Chroma collection careguide_v5.\n\n**Setup:** create Google Drive, Ollama and ChromaDB credentials, then select your Drive file in 'Download file'.\n\nChroma insert appends data: use a new collection name if you re-run on the same file.",
+        "height": 280,
+        "width": 520,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -360
+      ],
+      "id": "6aba6019-3d3a-4e36-9172-3535dcd3a3b1",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Chroma Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Chroma Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Chroma Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

@@ -1,0 +1,428 @@
+{
+  "name": "CareGuide – Medical Translator (Form)",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "المترجم الطبي الذكي | AI Medical Translator",
+        "formDescription": "أدخلي النص الطبي الذي تريدين ترجمته، أو ارفعي ملف PDF يحتوي على تقرير طبي للحصول على ترجمة واضحة ودقيقة.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "كيف تريدين إدخال المحتوى الطبي؟",
+              "fieldType": "dropdown",
+              "fieldName": "inputType",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Text"
+                  },
+                  {
+                    "option": "PDF"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "اكتبي النص الطبي هنا",
+              "fieldType": "textarea",
+              "fieldName": "medicalText"
+            },
+            {
+              "fieldLabel": "ارفعي التقرير الطبي بصيغة PDF",
+              "fieldName": "medicalPdf",
+              "fieldType": "=file",
+              "fieldOptions": {
+                "values": [
+                  {}
+                ]
+              },
+              "acceptFileTypes": "pdf"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "showHeaders": false
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -1504,
+        -80
+      ],
+      "id": "a014643c-1613-4814-8936-9fd8b02679c0",
+      "name": "On form submission"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "medicalPdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1104,
+        112
+      ],
+      "id": "f7c341c3-8e4d-494b-ad3b-214567a5c922",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst item = $input.first();\nconst text = item.json.medicalText;\n\nif (typeof text !== 'string' || !text.trim()) {\n  throw new Error('Please enter a medical question or text.');\n}\n\nreturn [{\n  json: {\n    chunk: text.trim(),\n    section: 'Medical Question',\n    index: 0,\n    source: 'Patient input'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        -224
+      ],
+      "id": "7f5de0fe-9b27-4537-a6bf-d87902a4017d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional medical translator translating into Modern Standard Arabic.\n\nYour task is to translate the source text into Arabic accurately and faithfully.\n\nStrict requirements:\n1. Translate only the information explicitly present in the source text.\n2. Do not answer questions, explain the content, summarize it, expand it, or provide medical advice.\n3. Never add examples, symptoms, warnings, recommendations, or other information that does not appear in the source.\n4. Preserve the original meaning, tone, headings, lists, numbers, dosages, units, and medical terminology.\n5. Use clear, natural, grammatically correct Modern Standard Arabic.\n6. If the source is already Arabic, preserve its meaning and make only minimal language corrections if needed.\n7. If the source is a short sentence, return only its translation as a short sentence.\n8. Return only the translated text, with no introduction, commentary, or follow-up question.\n\nSource text:\n{{ $json.text }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -464,
+        -128
+      ],
+      "id": "f02788e2-f702-4434-b749-d9e28500a553",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "03eb0ad2-6ff7-415f-afd2-11996c65a8d3",
+              "name": "translated",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -96,
+        -128
+      ],
+      "id": "8c4dcea3-1685-4e3f-a7c9-ebf1982f2bdd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional Arabic medical translation proofreader.\n\nReview the Arabic medical translation provided below.\n\nYour tasks:\n1. Correct grammar, spelling, punctuation, and awkward phrasing.\n2. Improve clarity and readability while preserving the original meaning.\n3. Preserve all medical and technical terminology, numbers, dosages, units, warnings, and headings accurately.\n4. Do not answer questions contained in the text.\n5. Do not add medical advice, explanations, or information that is not present in the input.\n6. Do not interpret a statement as an incomplete question.\n7. If the text is already correct and clear, return it unchanged.\n8. Return only the final Arabic text, without commentary or follow-up questions.\n\nArabic translation to review:\n{{ $json.text }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        128,
+        -128
+      ],
+      "id": "1624d78b-b023-4a53-bbfb-44d421ae83a0",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "=Translation Done",
+        "completionMessage": "={{ $('Edit Fields').item.json.translated }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        496,
+        -128
+      ],
+      "id": "24be1a02-f6a5-4ac3-bd52-f1e98bf061b0",
+      "name": "Form"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.inputType }}",
+                    "rightValue": "Text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b0108e0a-b7ec-4c40-a8ee-6926a6dd42f8"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8c6c874e-9e4b-495d-8ba6-c7a38da467f2",
+                    "leftValue": "={{ $json.inputType}}",
+                    "rightValue": "PDF",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1312,
+        -80
+      ],
+      "id": "47fa148d-c1ca-400f-9791-872eba181ab2",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -768,
+        -224
+      ],
+      "id": "bdc5ab59-ff87-455f-aabf-2b7ec43672ff",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        64
+      ],
+      "id": "58130cd6-25ce-41f8-bad9-24f783f454cc",
+      "name": "OpenRouter Chat Model"
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        64,
+        80
+      ],
+      "id": "283f0861-33bb-45be-8a6d-db3d57a4a3a0",
+      "name": "OpenRouter Chat Model1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst text = item.json.text;\n\nif (typeof text !== 'string' || !text.trim()) {\n  throw new Error('No text was extracted from the PDF.');\n}\n\nreturn [{\n  json: {\n    chunk: text.trim(),\n    section: 'Medical Report',\n    index: 0,\n    source: 'Uploaded PDF'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        112
+      ],
+      "id": "66b589d5-2ca8-4805-a3d8-f54a09e62368",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "content": "## CareGuide – Medical Translator (Form)\nA web form: the user pastes medical text or uploads a PDF report. The text is split into chunks, translated into Modern Standard Arabic, then checked by a second proofreading pass and shown on the completion page.\n\n**Setup:** add an OpenRouter credential, publish the workflow and share the form's Production URL. It uses the OpenRouter free router, which has a daily request limit.\n\nTranslation only: no medical advice.",
+        "height": 300,
+        "width": 520,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        -604
+      ],
+      "id": "b8e0624c-1171-43ac-bff4-d17279673dfd",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": [],
+  "pinData": {}
+}
